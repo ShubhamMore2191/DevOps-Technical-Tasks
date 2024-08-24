@@ -1,0 +1,45 @@
+# vi server_monitor.sh
+#!/bin/bash
+
+# Function to display top 10 CPU-intensive processes
+function display_top_cpu() {
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $2,$4,$6,$8}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $10}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $12}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $14}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $16}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $18}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $20}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $22}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $24}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $26}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $28}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $30}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $32}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $34}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $36}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $38}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $40}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $42}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $44}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $46}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $48}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $50}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $52}' | head -1
+  top -b -n 1 | awk '/^Cpu(s|id)/ {print $54}' | head -1
+  top -n 10 -c 'COMMAND' | awk '{printf "%-20s %5.1f%% %5.1f%% %5.1f%% %8d\n", $12, $9, $10, $11, $8}'
+}
+
+# Function to display top 10 memory-intensive processes
+function display_top_memory() {
+  top -b -n 1 -c 'RES' | head -n 10 | awk '{printf "%-20s %8d\n", $12, $8}'
+}
+
+# Function to display network statistics
+function display_network_stats() {
+  netstat -s | grep 'TCP' | awk '{print $2, $3}'
+}
+
+# Function to display disk usage
+function display_disk_usage() {
+"server_monitor.sh" 95L, 3244B 
