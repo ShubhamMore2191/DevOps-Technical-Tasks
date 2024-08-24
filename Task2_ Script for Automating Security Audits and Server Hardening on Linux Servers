@@ -1,0 +1,172 @@
+vi security_audit_sh
+
+#!/bin/bash
+
+# Security Audit and Hardening Script for Linux Servers
+
+# Function to check for root privileges
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Please run as root"
+        exit 1
+    fi
+}
+
+# User and Group Audits
+audit_users_groups() {
+    echo "=== User and Group Audits ==="
+    echo "1. Listing all users and groups:"
+    awk -F':' '{ print $1}' /etc/passwd
+    awk -F':' '{ print $1}' /etc/group
+    
+    echo "2. Checking for non-standard users with UID 0:"
+    awk -F: '($3 == 0) {print}' /etc/passwd
+    
+    echo "3. Identifying users without passwords or with weak passwords:"
+    awk -F: '($2 == "" || $2 == "!") {print $1}' /etc/shadow
+}
+
+# File and Directory Permissions
+audit_file_permissions() {
+    echo "=== File and Directory Permissions ==="
+    echo "1. Scanning for world-writable files and directories:"
+    find / -type d -perm -0002 -exec ls -ld {} \; 2>/dev/null
+    find / -type f -perm -0002 -exec ls -l {} \; 2>/dev/null
+    
+    echo "2. Checking for .ssh directories with secure permissions:"
+    find /home -type d -name ".ssh" -exec chmod 700 {} \;
+    find /home -type f -name "authorized_keys" -exec chmod 600 {} \;
+
+    echo "3. Reporting files with SUID or SGID bits set:"
+    find / -perm /6000 -type f -exec ls -ld {} \; 2>/dev/null
+}
+
+# Service Audits
+audit_services() {
+    echo "=== Service Audits ==="
+    echo "1. Listing all running services:"
+    systemctl list-units --type=service --state=running
+    
+    echo "2. Checking for unauthorized or unnecessary services:"
+    ps aux | grep -vE '(sshd|iptables|firewalld|rsyslog|cron|systemd)'  # Modify this list based on your needs
+    
+    echo "3. Ensuring critical services are running:"
+    systemctl is-active sshd
+    systemctl is-active iptables || systemctl is-active firewalld
+}
+
+# Firewall and Network Security
+audit_firewall_network() {
+    echo "=== Firewall and Network Security ==="
+    echo "1. Checking firewall status:"
+    if systemctl is-active iptables &>/dev/null; then
+        iptables -L -v -n
+    elif systemctl is-active firewalld &>/dev/null; then
+        firewall-cmd --list-all
+    else
+        echo "No firewall is active."
+    fi
+    
+    echo "2. Checking for open ports and associated services:"
+    netstat -tuln
+    
+    echo "3. Checking for IP forwarding and other insecure configurations:"
+    sysctl net.ipv4.ip_forward
+    sysctl net.ipv6.conf.all.forwarding
+}
+
+# IP and Network Configuration Checks
+audit_ip_network() {
+    echo "=== IP and Network Configuration ==="
+    echo "1. Listing all IP addresses and their types:"
+    ip addr show
+    
+    echo "2. Checking for public vs private IPs:"
+    ip addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | while read -r ip; do
+        if [[ $ip =~ ^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\. ]]; then
+            echo "$ip is a private IP."
+        else
+            echo "$ip is a public IP."
+        fi
+    done
+}
+
+# Security Updates and Patching
+audit_security_updates() {
+    echo "=== Security Updates and Patching ==="
+    echo "1. Checking for available security updates:"
+    if command -v apt-get &> /dev/null; then
+        apt-get update && apt-get -s upgrade | grep "^Inst"
+    elif command -v yum &> /dev/null; then
+        yum check-update
+    fi
+}
+
+# Log Monitoring
+monitor_logs() {
+    echo "=== Log Monitoring ==="
+    echo "1. Checking for suspicious log entries (e.g., SSH login attempts):"
+    grep "Failed password" /var/log/auth.log  # For Debian-based systems
+    grep "Failed password" /var/log/secure    # For RHEL-based systems
+}
+
+# Server Hardening Steps
+harden_server() {
+    echo "=== Server Hardening Steps ==="
+    
+    echo "1. SSH Configuration: Disabling password-based root login"
+    sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+    sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+    systemctl reload sshd
+    
+    echo "2. Disabling IPv6 (if not required):"
+    sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    sysctl -w net.ipv6.conf.default.disable_ipv6=1
+    echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
+    
+    echo "3. Securing GRUB bootloader with a password:"
+    echo "Set a password for GRUB bootloader manually."
+}
+
+# Custom Security Checks
+custom_checks() {
+    echo "=== Custom Security Checks ==="
+    # Add custom security checks here
+    echo "No custom checks defined."
+}
+
+# Reporting and Alerting
+generate_report() {
+    REPORT_FILE="security_audit_report_$(date +%F).txt"
+    echo "=== Generating Report ===" > "$REPORT_FILE"
+    audit_users_groups >> "$REPORT_FILE"
+    audit_file_permissions >> "$REPORT_FILE"
+    audit_services >> "$REPORT_FILE"
+    audit_firewall_network >> "$REPORT_FILE"
+    audit_ip_network >> "$REPORT_FILE"
+    audit_security_updates >> "$REPORT_FILE"
+    monitor_logs >> "$REPORT_FILE"
+    harden_server >> "$REPORT_FILE"
+    custom_checks >> "$REPORT_FILE"
+    
+    echo "Report saved to $REPORT_FILE"
+}
+
+# Main function to run all audits and hardening steps
+main() {
+    check_root
+    audit_users_groups
+    audit_file_permissions
+    audit_services
+    audit_firewall_network
+    audit_ip_network
+    audit_security_updates
+    monitor_logs
+    harden_server
+    custom_checks
+    generate_report
+}
+
+# Execute the main function
+main
